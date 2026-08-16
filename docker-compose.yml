@@ -15,3 +15,58 @@ services:
       - APP_PORT=8000
 
     restart: always
+
+    depends_on:
+      - user-service
+
+    networks:
+      - coffee-shop
+
+  user-service:
+    build:
+      context: ./authService
+      dockerfile: Dockerfile
+
+    container_name: authService
+    ports:
+      - "8080:8080"
+
+    restart: always
+
+    depends_on:
+      - postgres-user-service
+
+    networks:
+      - coffee-shop
+
+
+  postgres-user-service:
+    image: postgres:15-alpine
+    container_name: user-service-db
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: users_db
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - ./authService/migrations:/docker-entrypoint-initdb.d
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d users_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - coffee-shop
+
+
+networks:
+  coffee-shop:
+    driver: bridge
