@@ -13,6 +13,11 @@ services:
     environment:
       - APP_HOST=0.0.0.0
       - APP_PORT=8000
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=api-gateway
+      - SERVICE_VERSION=1.0.0
+      - ENVIRONMENT=development
+      - PYTHONUNBUFFERED=1
 
     restart: always
 
@@ -26,6 +31,10 @@ services:
     build:
       context: ./authService
       dockerfile: Dockerfile
+
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
+      - OTEL_SERVICE_NAME=user-service
 
     container_name: authService
     ports:
@@ -63,6 +72,18 @@ services:
       timeout: 5s
       retries: 5
 
+    networks:
+      - coffee-shop
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686" # Веб-интерфейс Jaeger UI
+      - "4317:4317"   # Порт для приема трасс по OTLP gRPC
+      - "4318:4318"   # Порт для приема трасс по OTLP HTTP
     networks:
       - coffee-shop
 

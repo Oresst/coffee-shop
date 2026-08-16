@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     APP_PORT: int = 8000
 
     ORDER_SERVICE_URL: str = "http://127.0.0.1:8001"
-    USER_SERVICE_URL: str = "http://127.0.0.1:8002"
+    USER_SERVICE_URL: str = "http://user-service:8080"
     PAYMENT_SERVICE_URL: str = "http://127.0.0.1:8003"
 
     SECRET_KEY: str = "super_secret_key"

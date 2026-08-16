@@ -1,12 +1,13 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	domain "github.com/yourusername/user-service/internal/domains"
 	"github.com/yourusername/user-service/internal/repository/postgres"
 	"github.com/yourusername/user-service/pkg/jwt"
-
+	"go.opentelemetry.io/otel"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -22,8 +23,8 @@ func NewAuthService(repo postgres.UserRepositoryInt, jwtManager *jwt.JWTManager)
 	}
 }
 
-func (s *AuthService) Register(email, name, password string) (*domain.User, error) {
-	existing, err := s.repo.FindByEmail(email)
+func (s *AuthService) Register(ctx context.Context, email, name, password string) (*domain.User, error) {
+	existing, err := s.repo.FindByEmail(ctx, email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing user: %w", err)
 	}
@@ -51,8 +52,12 @@ func (s *AuthService) Register(email, name, password string) (*domain.User, erro
 	return user, nil
 }
 
-func (s *AuthService) Login(req *domain.LoginRequest) (*domain.TokenResponse, error) {
-	user, err := s.repo.FindByEmail(req.Email)
+func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*domain.TokenResponse, error) {
+	tracer := otel.Tracer("user-service")
+	ctx, span := tracer.Start(ctx, "Login")
+	defer span.End()
+
+	user, err := s.repo.FindByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}

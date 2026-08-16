@@ -1,17 +1,19 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"github.com/yourusername/user-service/internal/config"
 	domain "github.com/yourusername/user-service/internal/domains"
+	"go.opentelemetry.io/otel"
 	"log"
 
 	_ "github.com/lib/pq"
 )
 
 type UserRepositoryInt interface {
-	FindByEmail(email string) (*domain.User, error)
+	FindByEmail(ctx context.Context, email string) (*domain.User, error)
 	FindByID(id int64) (*domain.User, error)
 	Create(user *domain.User) error
 	Close() error
@@ -38,7 +40,11 @@ func NewUserRepository(cfg *config.Config) (UserRepositoryInt, error) {
 	return &UserRepository{db: db}, nil
 }
 
-func (r *UserRepository) FindByEmail(email string) (*domain.User, error) {
+func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
+	tracer := otel.Tracer("user-service")
+	ctx, span := tracer.Start(ctx, "FindByEmail")
+	defer span.End()
+
 	query := `SELECT id, email, name, password, created_at, updated_at 
               FROM users WHERE email = $1`
 
