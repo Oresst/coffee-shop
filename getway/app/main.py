@@ -1,8 +1,5 @@
-from contextlib import asynccontextmanager
-
 import uvicorn
 import os
-import logging
 from fastapi import FastAPI, Depends
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -12,13 +9,13 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
+from app.logger import get_logger
 from middleware.jwt import get_current_user
 from routes.users import router as users_router
 from routes.orders import router as orders_router
 
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # --- Инициализация трейсинга ---

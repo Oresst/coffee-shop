@@ -1,5 +1,8 @@
 import httpx
-from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+
+from app.logger import get_logger, log_with_trace_id, INFO
+
+logger = get_logger(__name__)
 
 
 class UserServiceClient:
@@ -9,6 +12,8 @@ class UserServiceClient:
         self.base_url = base_url
 
     async def login(self, email: str, password: str):
+        log_with_trace_id(logger, INFO, "Login attempt", extra={"user.email": email})
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.post(
                 f"{self.base_url}/api/login",

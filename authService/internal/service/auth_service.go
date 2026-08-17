@@ -7,7 +7,9 @@ import (
 	domain "github.com/yourusername/user-service/internal/domains"
 	"github.com/yourusername/user-service/internal/repository/postgres"
 	"github.com/yourusername/user-service/pkg/jwt"
+	"github.com/yourusername/user-service/pkg/logger"
 	"go.opentelemetry.io/otel"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -56,6 +58,11 @@ func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*dom
 	tracer := otel.Tracer("user-service")
 	ctx, span := tracer.Start(ctx, "Login")
 	defer span.End()
+
+	logger.Log.Debug("AuthService.Login called",
+		logger.WithTraceID(ctx),
+		zap.String("user.email", req.Email),
+	)
 
 	user, err := s.repo.FindByEmail(ctx, req.Email)
 	if err != nil {

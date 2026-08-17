@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/yourusername/user-service/pkg/logger"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel/propagation"
 	"log"
@@ -58,6 +59,10 @@ func initTracer() func() {
 }
 
 func main() {
+	// Инициализируем логгер
+	logger.Init()
+	defer logger.Sync() // Сброс буферов при завершении
+
 	cfg := config.LoadConfig()
 
 	// Jaeger
