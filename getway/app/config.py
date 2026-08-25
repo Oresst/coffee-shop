@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     APP_HOST: str = "127.0.0.1"
     APP_PORT: int = 8000
 
-    ORDER_SERVICE_URL: str = "http://127.0.0.1:8001"
+    ORDER_SERVICE_URL: str = "http://order-service:8080"
     USER_SERVICE_URL: str = "http://user-service:8080"
     PAYMENT_SERVICE_URL: str = "http://127.0.0.1:8003"
 

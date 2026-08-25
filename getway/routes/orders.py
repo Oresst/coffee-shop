@@ -18,17 +18,17 @@ def get_order_service_client() -> OrderServiceClient:
 
 
 @router.post(
-    "/create",
+    "/order_create",
     status_code=status.HTTP_201_CREATED,
     summary="Создать новый заказ",
 )
 async def create_order(
-    order_in: List[OrderCreate],
+    order_in: OrderCreate,
     order_client: Annotated[OrderServiceClient, Depends(get_order_service_client)],
     current_user: Annotated[dict, Depends(get_current_user)]
 ):
-    user_id = current_user["sub"]
-    items = [item.model_dump() for item in order_in]
+    user_id = current_user["user_id"]
+    items = [item.model_dump() for item in order_in.items]
 
     try:
         result = await order_client.create_order(user_id, items)

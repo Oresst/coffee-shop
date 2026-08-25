@@ -1,7 +1,13 @@
-from pydantic import BaseModel, Field
+from typing import List
+
+from pydantic import BaseModel
+
+
+class OrderItems(BaseModel):
+    product_id: int
+    quantity: int
+    price: float
 
 
 class OrderCreate(BaseModel):
-    item_id: int
-    quantity: int = Field(..., gt=0)
-    price: float = Field(..., ge=0.0)
+    items: List[OrderItems]
