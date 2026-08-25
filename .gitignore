@@ -1,4 +1,6 @@
 .idea/*
 authService/.idea/*
 authService/.env
+orderService/.idea/*
+orderService/.env
 
