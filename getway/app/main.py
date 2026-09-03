@@ -9,6 +9,7 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
+from app.config import settings
 from app.logger import get_logger
 from middleware.jwt import get_current_user
 from routes.users import router as users_router
@@ -20,7 +21,7 @@ logger = get_logger(__name__)
 
 # --- Инициализация трейсинга ---
 def init_tracing(app: FastAPI):
-    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+    endpoint = settings.OTEL_EXPORTER_OTLP_ENDPOINT
     if not endpoint:
         logger.warning("OTEL_EXPORTER_OTLP_ENDPOINT not set. Tracing disabled.")
         return

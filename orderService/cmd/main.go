@@ -20,10 +20,10 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 )
 
-func initTracer() func() {
+func initTracer(cfg *config.Config) func() {
 	exporter, err := otlptracegrpc.New(
 		context.Background(),
-		otlptracegrpc.WithEndpoint(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
+		otlptracegrpc.WithEndpoint(cfg.OtelExporterOtlpEndpoint),
 		otlptracegrpc.WithInsecure(),
 	)
 	if err != nil {
@@ -65,7 +65,7 @@ func main() {
 	cfg := config.LoadConfig()
 
 	// Jaeger
-	shutdown := initTracer()
+	shutdown := initTracer(cfg)
 	defer shutdown()
 
 	// Подключение к БД

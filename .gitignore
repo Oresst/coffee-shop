@@ -1,7 +1,12 @@
 .idea/*
+
 authService/.idea/*
 authService/.env
+
 orderService/.idea/*
 orderService/.env
+orderService/.docker_env
+
+inventoryService/.idea/*
 inventoryService/.env
 inventoryService/.docker_env

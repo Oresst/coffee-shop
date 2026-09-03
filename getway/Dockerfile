@@ -7,6 +7,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
 COPY . /app
+RUN mv ./app/.docker_env ./app/.env
 
 RUN pip install --no-cache-dir --user -r req.txt
 

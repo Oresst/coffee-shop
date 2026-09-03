@@ -59,6 +59,8 @@ func main() {
 	cfg := config.LoadConfig()
 
 	logger.Init()
+	defer logger.Sync()
+
 	shutdown := initTracer(cfg)
 	defer shutdown()
 

@@ -1,0 +1,12 @@
+# Настройки приложения
+APP_HOST=0.0.0.0
+APP_PORT=8080
+
+# URL-адреса микросервисов
+ORDER_SERVICE_URL=http://order-service:8080
+USER_SERVICE_URL=http://user-service:8080
+INVENTORY_SERVICE_URL=http://inventory-service:8080
+
+# Безопасность
+SECRET_KEY=super_secret_key
+ALGORITHM=HS256

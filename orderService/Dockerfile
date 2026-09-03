@@ -20,7 +20,7 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY --from=builder /app/order-service .
-COPY --from=builder /app/.env .
+COPY --from=builder /app/.docker_env .env
 
 EXPOSE 8080
 
