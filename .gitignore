@@ -3,4 +3,5 @@ authService/.idea/*
 authService/.env
 orderService/.idea/*
 orderService/.env
-
+inventoryService/.env
+inventoryService/.docker_env
