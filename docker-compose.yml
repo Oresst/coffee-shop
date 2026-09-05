@@ -163,6 +163,51 @@ services:
     networks:
       - coffee-shop
 
+  saga-service:
+    build:
+      context: ./sagaService
+      dockerfile: Dockerfile
+
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
+      - OTEL_SERVICE_NAME=saga-service
+
+    container_name: sagaService
+
+    restart: always
+
+    depends_on:
+      - postgres-saga-service
+
+    networks:
+      - coffee-shop
+
+  postgres-saga-service:
+    image: postgres:15-alpine
+    container_name: saga-service-db
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: saga_db
+
+    ports:
+      - "5436:5432"
+
+    volumes:
+      - ./sagaService/migrations:/docker-entrypoint-initdb.d
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d saga_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - coffee-shop
+
   jaeger:
     image: jaegertracing/all-in-one:latest
     container_name: jaeger

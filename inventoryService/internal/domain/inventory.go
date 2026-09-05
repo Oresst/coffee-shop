@@ -46,7 +46,6 @@ type OrderItem struct {
 // ReserveRequest — запрос на резервацию
 type ReserveRequest struct {
 	RequestID string      `json:"request_id"`
-	OrderID   int64       `json:"order_id"`
 	Items     []OrderItem `json:"items"`
 }
 
@@ -54,6 +53,5 @@ type ReserveRequest struct {
 type ReserveResponse struct {
 	Success   bool   `json:"success"`
 	RequestID string `json:"request_id"`
-	OrderID   int64  `json:"order_id"`
 	Message   string `json:"message,omitempty"`
 }
