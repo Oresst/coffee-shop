@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -20,27 +21,42 @@ func NewOrderHandler(orderService *service.OrderService) *OrderHandler {
 }
 
 func (h *OrderHandler) CreateOrder(c *gin.Context) {
+	place := "[OrderHandler.CreateOrder]"
+
 	var req domain.CreateOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		logger.Log.Warn("Invalid create order request",
+		logger.Log.Warn(fmt.Sprintf("%s Ошибка в методе ShouldBindJSON", place),
 			zap.Error(err),
 		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	logger.Log.Info(fmt.Sprintf("%s Получен запрос на создание заказа", place),
+		zap.Int64("user_id", req.UserID),
+		zap.String("request_id", req.RequestId),
+	)
+
 	ctx := c.Request.Context()
 	order, err := h.orderService.CreateOrder(ctx, &req)
 	if err != nil {
-		logger.Log.Error("Failed to create order",
+		logger.Log.Error(fmt.Sprintf("%s Ошибка создания заказа", place),
 			logger.WithTraceID(ctx),
 			zap.Error(err),
+			zap.Int64("user_id", req.UserID),
+			zap.String("request_id", req.RequestId),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, order)
+	logger.Log.Info(fmt.Sprintf("%s Заказ создан успешно", place),
+		logger.WithTraceID(ctx),
+		zap.Int64("user_id", req.UserID),
+		zap.String("request_id", req.RequestId),
+	)
+
+	c.JSON(http.StatusOK, order)
 }
 
 func (h *OrderHandler) GetOrder(c *gin.Context) {

@@ -34,24 +34,34 @@ const (
 
 // CheckAvailabilityRequest — запрос на проверку доступности
 type CheckAvailabilityRequest struct {
-	Items []OrderItem `json:"items"`
+	Items []OrderItemRequest `json:"items"`
 }
 
-// OrderItem — товар из заказа
-type OrderItem struct {
+// OrderItemRequest — товар из заказа
+type OrderItemRequest struct {
 	ProductID int64 `json:"product_id"`
 	Quantity  int   `json:"quantity"`
 }
 
 // ReserveRequest — запрос на резервацию
 type ReserveRequest struct {
-	RequestID string      `json:"request_id"`
-	Items     []OrderItem `json:"items"`
+	RequestID string             `json:"request_id"`
+	Items     []OrderItemRequest `json:"items"`
+	OrderID   *int64             `json:"order_id"`
+	UserId    int64              `json:"user_id"`
 }
 
 // ReserveResponse — ответ на резервацию
 type ReserveResponse struct {
-	Success   bool   `json:"success"`
-	RequestID string `json:"request_id"`
-	Message   string `json:"message,omitempty"`
+	Success   bool            `json:"success"`
+	RequestID string          `json:"request_id"`
+	Message   string          `json:"message,omitempty"`
+	OrderID   *int64          `json:"order_id,omitempty"`
+	Items     []*ReservedItem `json:"items"`
+}
+
+type ReservedItem struct {
+	ItemID   int64   `json:"item_id"`
+	Quantity int     `json:"quantity"`
+	Price    float64 `json:"price"`
 }

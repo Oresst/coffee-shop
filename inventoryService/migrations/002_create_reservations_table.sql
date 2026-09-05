@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS reservations (
     id SERIAL PRIMARY KEY,
     request_id VARCHAR(36) NOT NULL,
-    order_id INTEGER NOT NULL,
+    order_id INTEGER,
     item_id INTEGER NOT NULL REFERENCES inventory(id),
     quantity INTEGER NOT NULL,
     status VARCHAR(50) DEFAULT 'pending',

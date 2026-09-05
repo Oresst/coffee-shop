@@ -19,10 +19,34 @@ func NewOrderService(repo repository.OrderRepositoryInt) *OrderService {
 }
 
 func (s *OrderService) CreateOrder(ctx context.Context, req *domain.CreateOrderRequest) (*domain.OrderResponse, error) {
-	logger.Log.Debug("Creating order",
+	place := "[OrderService.CreateOrder]"
+
+	logger.Log.Info(fmt.Sprintf("%s Создание заказа", place),
 		logger.WithTraceID(ctx),
 		zap.Int64("user_id", req.UserID),
+		zap.String("request_id", req.RequestId),
 	)
+
+	var order *domain.Order
+
+	order, err := s.repo.FindByRequestID(ctx, req.RequestId)
+	if err != nil {
+		logger.Log.Error(fmt.Sprintf("%s Ошибка поиска товара по request ID", place),
+			logger.WithTraceID(ctx),
+			zap.Int64("user_id", req.UserID),
+			zap.String("request_id", req.RequestId),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
+	if order != nil {
+		return &domain.OrderResponse{
+			ID:     order.ID,
+			UserID: order.UserID,
+			Status: order.Status,
+		}, nil
+	}
 
 	// Рассчитываем общую сумму
 	var total float64
@@ -30,34 +54,35 @@ func (s *OrderService) CreateOrder(ctx context.Context, req *domain.CreateOrderR
 		total += item.Price * float64(item.Quantity)
 	}
 
-	order := &domain.Order{
-		UserID: req.UserID,
-		Items:  req.Items,
-		Status: domain.StatusNew,
-		Total:  total,
+	order = &domain.Order{
+		UserID:    req.UserID,
+		Items:     req.Items,
+		Status:    domain.StatusNew,
+		Total:     total,
+		RequestID: req.RequestId,
 	}
 
 	if err := s.repo.Create(ctx, order); err != nil {
-		logger.Log.Error("Failed to create order",
+		logger.Log.Error(fmt.Sprintf("%s Ошибка создания заказа", place),
 			logger.WithTraceID(ctx),
 			zap.Error(err),
+			zap.Int64("user_id", req.UserID),
+			zap.String("request_id", req.RequestId),
 		)
-		return nil, fmt.Errorf("failed to create order: %w", err)
+		return nil, err
 	}
 
-	logger.Log.Info("Order created successfully",
+	logger.Log.Info(fmt.Sprintf("%s Заказ создан успешно", place),
 		logger.WithTraceID(ctx),
 		zap.Int64("order_id", order.ID),
 		zap.Int64("user_id", order.UserID),
-		zap.Float64("total", order.Total),
+		zap.String("request_id", req.RequestId),
 	)
 
 	return &domain.OrderResponse{
 		ID:     order.ID,
 		UserID: order.UserID,
-		Items:  order.Items,
 		Status: order.Status,
-		Total:  order.Total,
 	}, nil
 }
 
@@ -78,9 +103,7 @@ func (s *OrderService) GetOrder(ctx context.Context, id int64) (*domain.OrderRes
 	return &domain.OrderResponse{
 		ID:     order.ID,
 		UserID: order.UserID,
-		Items:  order.Items,
 		Status: order.Status,
-		Total:  order.Total,
 	}, nil
 }
 
@@ -100,9 +123,7 @@ func (s *OrderService) GetUserOrders(ctx context.Context, userID int64) ([]domai
 		responses[i] = domain.OrderResponse{
 			ID:     order.ID,
 			UserID: order.UserID,
-			Items:  order.Items,
 			Status: order.Status,
-			Total:  order.Total,
 		}
 	}
 

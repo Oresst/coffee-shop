@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -45,6 +46,8 @@ func (h *InventoryHandler) CheckAvailability(c *gin.Context) {
 }
 
 func (h *InventoryHandler) ReserveItems(c *gin.Context) {
+	place := "[InventoryHandler.ReserveItems]"
+
 	var req domain.ReserveRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -54,9 +57,11 @@ func (h *InventoryHandler) ReserveItems(c *gin.Context) {
 	ctx := c.Request.Context()
 	resp, err := h.inventoryService.ReserveItems(ctx, &req)
 	if err != nil {
-		logger.Log.Error("Reserve items failed",
+		logger.Log.Error(fmt.Sprintf("%s Ошибка резервации товаров", place),
 			logger.WithTraceID(ctx),
 			zap.Error(err),
+			zap.Int64("user_id", req.UserId),
+			zap.String("request_id", req.RequestID),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -66,6 +71,12 @@ func (h *InventoryHandler) ReserveItems(c *gin.Context) {
 		c.JSON(http.StatusConflict, resp)
 		return
 	}
+
+	logger.Log.Info(fmt.Sprintf("%s Товары успешно зарезервированы", place),
+		logger.WithTraceID(ctx),
+		zap.Int64("user_id", req.UserId),
+		zap.String("request_id", req.RequestID),
+	)
 
 	c.JSON(http.StatusOK, resp)
 }

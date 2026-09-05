@@ -8,6 +8,7 @@ import (
 type Order struct {
 	ID        int64       `json:"id"`
 	UserID    int64       `json:"user_id"`
+	RequestID string      `json:"request_id"`
 	Items     []OrderItem `json:"items"`
 	Status    OrderStatus `json:"status"` // pending, confirmed, cancelled
 	Total     float64     `json:"total"`
@@ -42,14 +43,13 @@ type OrderItem struct {
 }
 
 type CreateOrderRequest struct {
-	UserID int64       `json:"user_id"`
-	Items  []OrderItem `json:"items"`
+	UserID    int64       `json:"user_id"`
+	RequestId string      `json:"request_id"`
+	Items     []OrderItem `json:"items"`
 }
 
 type OrderResponse struct {
-	ID     int64       `json:"id"`
+	ID     int64       `json:"order_id"`
 	UserID int64       `json:"user_id"`
-	Items  []OrderItem `json:"items"`
 	Status OrderStatus `json:"status"`
-	Total  float64     `json:"total"`
 }

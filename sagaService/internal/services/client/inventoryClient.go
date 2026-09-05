@@ -16,14 +16,14 @@ type InventoryClient struct {
 	client  *http.Client
 }
 
-func NewInventoryClient(cfg *config.Config) (*InventoryClient, error) {
+func NewInventoryClient(cfg *config.Config) *InventoryClient {
 	return &InventoryClient{
 		baseUrl: cfg.InventoryServiceUrl,
 		client: &http.Client{
-			Timeout:   10 * time.Second,
+			Timeout:   120 * time.Second,
 			Transport: otelhttp.NewTransport(http.DefaultTransport),
 		},
-	}, nil
+	}
 }
 
 func (c *InventoryClient) Reserve(request *domains.ReserveRequest) (*domains.ReserveResponse, error) {

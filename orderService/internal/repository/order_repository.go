@@ -13,6 +13,7 @@ import (
 type OrderRepositoryInt interface {
 	Create(ctx context.Context, order *domain.Order) error
 	FindByID(ctx context.Context, id int64) (*domain.Order, error)
+	FindByRequestID(ctx context.Context, requestId string) (*domain.Order, error)
 	FindByUserID(ctx context.Context, userID int64) ([]domain.Order, error)
 	UpdateStatus(ctx context.Context, id int64, status string) error
 	Close() error

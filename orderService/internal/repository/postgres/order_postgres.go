@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/yourusername/order-service/pkg/logger"
+	"go.uber.org/zap"
 
 	_ "github.com/lib/pq"
 	"github.com/yourusername/order-service/internal/domain"
@@ -15,17 +17,59 @@ type OrderRepository struct {
 }
 
 func (r *OrderRepository) Create(ctx context.Context, order *domain.Order) error {
+	place := "[OrderRepository.Create]"
+
 	itemsJSON, err := json.Marshal(order.Items)
 	if err != nil {
-		return fmt.Errorf("failed to marshal items: %w", err)
+		logger.Log.Error(fmt.Sprintf("%s Ошибка сериализации order.Items", place),
+			logger.WithTraceID(ctx),
+			zap.Error(err),
+			zap.Int64("user_id", order.UserID),
+			zap.String("request_id", order.RequestID),
+		)
+		return err
 	}
 
-	query := `INSERT INTO orders (user_id, items, status, total, created_at, updated_at) 
-              VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING id, created_at`
+	query := `INSERT INTO orders (user_id, items, status, total, request_id, created_at, updated_at) 
+              VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING id, created_at`
 
-	err = r.Db.QueryRowContext(ctx, query, order.UserID, itemsJSON, order.Status, order.Total).
+	err = r.Db.QueryRowContext(ctx, query, order.UserID, itemsJSON, order.Status, order.Total, order.RequestID).
 		Scan(&order.ID, &order.CreatedAt)
-	return err
+
+	if err != nil {
+		logger.Log.Error(fmt.Sprintf("%s Ошибка записи в таблицу orders", place),
+			logger.WithTraceID(ctx),
+			zap.Error(err),
+			zap.Int64("user_id", order.UserID),
+			zap.String("request_id", order.RequestID),
+		)
+		return err
+	}
+
+	return nil
+}
+
+func (r *OrderRepository) FindByRequestID(ctx context.Context, requestId string) (*domain.Order, error) {
+	place := "[OrderRepository.FindByRequestID]"
+	var order domain.Order
+
+	query := `SELECT id, status, user_id FROM orders WHERE request_id = $1`
+	err := r.Db.QueryRowContext(ctx, query, requestId).Scan(&order.ID, &order.Status, &order.UserID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
+		logger.Log.Error(fmt.Sprintf("%s Ошибка получения заказа", place),
+			logger.WithTraceID(ctx),
+			zap.Error(err),
+			zap.Int64("user_id", order.UserID),
+			zap.String("request_id", requestId),
+		)
+		return nil, err
+	}
+
+	return &order, nil
 }
 
 func (r *OrderRepository) FindByID(ctx context.Context, id int64) (*domain.Order, error) {

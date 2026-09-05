@@ -36,7 +36,7 @@ func (r *InventoryRepository) Close() error {
 }
 
 // CheckAvailability — проверяет, доступно ли количество товаров
-func (r *InventoryRepository) CheckAvailability(ctx context.Context, items []domain.OrderItem) (bool, error) {
+func (r *InventoryRepository) CheckAvailability(ctx context.Context, items []domain.OrderItemRequest) (bool, error) {
 	for _, item := range items {
 		var available int
 		query := `SELECT quantity - reserved FROM inventory WHERE id = $1`
@@ -56,11 +56,11 @@ func (r *InventoryRepository) CheckAvailability(ctx context.Context, items []dom
 }
 
 // ReserveItems — резервирует товары в рамках транзакции
-func (r *InventoryRepository) ReserveItems(ctx context.Context, requestID string, orderID int64, items []domain.OrderItem) error {
+func (r *InventoryRepository) ReserveItems(ctx context.Context, requestID string, orderID *int64, items []domain.OrderItemRequest) error {
 	// Начинаем транзакцию
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return err
 	}
 	defer func() {
 		if err != nil {
@@ -78,9 +78,6 @@ func (r *InventoryRepository) ReserveItems(ctx context.Context, requestID string
 		query := `SELECT quantity - reserved FROM inventory WHERE id = $1 FOR UPDATE`
 		err = tx.QueryRowContext(ctx, query, item.ProductID).Scan(&available)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				return fmt.Errorf("product %d not found", item.ProductID)
-			}
 			return err
 		}
 
@@ -93,7 +90,7 @@ func (r *InventoryRepository) ReserveItems(ctx context.Context, requestID string
 		updateQuery := `UPDATE inventory SET reserved = reserved + $1, updated_at = NOW() WHERE id = $2`
 		_, err = tx.ExecContext(ctx, updateQuery, item.Quantity, item.ProductID)
 		if err != nil {
-			return fmt.Errorf("failed to update inventory: %w", err)
+			return err
 		}
 
 		// Создаём запись о резервации
@@ -104,13 +101,13 @@ func (r *InventoryRepository) ReserveItems(ctx context.Context, requestID string
 		expiresAt := time.Now().Add(10 * time.Minute) // резервация на 10 минут
 		_, err = tx.ExecContext(ctx, fmt.Sprintf(reservationQuery, domain.ReservationStatusPending), requestID, orderID, item.ProductID, item.Quantity, expiresAt)
 		if err != nil {
-			return fmt.Errorf("failed to create reservation: %w", err)
+			return err
 		}
 	}
 
 	// Подтверждаем транзакцию
 	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		return err
 	}
 
 	return nil
@@ -190,4 +187,33 @@ func (r *InventoryRepository) GetReservationStatus(ctx context.Context, requestI
 		return "", err
 	}
 	return status, nil
+}
+
+// GetReservedItems - получает зарезервированные товары по request_id
+func (r *InventoryRepository) GetReservedItems(ctx context.Context, requestID string) ([]*domain.ReservedItem, error) {
+	var items []*domain.ReservedItem
+
+	query := `SELECT i.id, i.quantity, i.price 
+			  FROM reservations r
+			  LEFT JOIN inventory i ON r.item_id = i.id
+			  WHERE r.request_id = $1`
+
+	rows, err := r.db.QueryContext(ctx, query, requestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item domain.ReservedItem
+
+		err = rows.Scan(&item.ItemID, &item.Quantity, &item.Price)
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, &item)
+	}
+
+	return items, nil
 }

@@ -51,7 +51,7 @@ func LoadConfig() *Config {
 		OtelServiceName:          getEnv("OTEL_SERVICE_NAME", "saga-service"),
 
 		OrderServiceUrl:     getEnv("ORDER_SERVICE_URL", "http://order-service:8080"),
-		InventoryServiceUrl: getEnv("INVENTORY_URL", "http://inventory-service:8080"),
+		InventoryServiceUrl: getEnv("INVENTORY_SERVICE_URL", "http://inventory-service:8080"),
 	}
 }
 
