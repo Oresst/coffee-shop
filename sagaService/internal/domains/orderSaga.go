@@ -29,6 +29,11 @@ const (
 	StatusCreateOrderFailed    OrderSagaStatus = "create_order_failed"
 	StatusCreateOrderCancelled OrderSagaStatus = "create_order_cancelled"
 
+	StatusConfirmReservationStarted   OrderSagaStatus = "confirm_reservation_started"
+	StatusConfirmReservationFinished  OrderSagaStatus = "confirm_reservation_finished"
+	StatusConfirmReservationFailed    OrderSagaStatus = "confirm_reservation_failed"
+	StatusConfirmReservationCancelled OrderSagaStatus = "confirm_reservation_cancelled"
+
 	StatusCompleted OrderSagaStatus = "completed"
 	StatusCancelled OrderSagaStatus = "cancelled"
 )
@@ -71,6 +76,11 @@ type ReserveResponse struct {
 	RequestID string  `json:"request_id"`
 	Message   string  `json:"message,omitempty"`
 	Items     []*Item `json:"items"`
+}
+
+type ConfirmReserveRequest struct {
+	RequestID string `json:"request_id"`
+	OrderID   int    `json:"order_id"`
 }
 
 type CreateOrderSagaRequest struct {

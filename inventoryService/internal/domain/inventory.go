@@ -61,7 +61,7 @@ type ReserveResponse struct {
 }
 
 type ReservedItem struct {
-	ItemID   int64   `json:"item_id"`
+	ItemID   int64   `json:"product_id"`
 	Quantity int     `json:"quantity"`
 	Price    float64 `json:"price"`
 }

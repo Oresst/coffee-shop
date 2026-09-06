@@ -64,16 +64,29 @@ func (s *OrderSagaService) StartSaga(ctx context.Context, userID int, items []*d
 }
 
 func (s *OrderSagaService) Continue(ctx context.Context) {
+	place := "[OrderSaga.Continue]"
+
 	saga, ok := ctx.Value("saga").(domains.OrderSaga)
 	if !ok {
 		return
 	}
 
 	switch saga.Status {
-	case domains.StatusCreated, domains.StatusReserveStarted:
+	case domains.StatusCreated, domains.StatusReserveStarted, domains.StatusReservedFailed:
 		s.Reserve(ctx, &saga)
-	case domains.StatusReservedFinished:
+	case domains.StatusReservedFinished, domains.StatusCreateOrderStarted, domains.StatusCreateOrderFailed:
 		s.CreateOrder(ctx, &saga)
+	case domains.StatusCreateOrderFinished, domains.StatusConfirmReservationStarted, domains.StatusConfirmReservationFailed:
+		s.ConfirmReservation(ctx, &saga)
+	case domains.StatusConfirmReservationFinished:
+		err := s.repo.ChangeStatus(ctx, &saga, domains.StatusCompleted)
+		if err != nil {
+			logger.Log.Error(fmt.Sprintf("%s ошибка изменения статуса саги", place),
+				zap.String("request_id", saga.RequestID),
+				zap.Int("saga_id", saga.ID),
+				zap.Error(err),
+			)
+		}
 	}
 }
 
@@ -210,5 +223,62 @@ func (s *OrderSagaService) CreateOrder(ctx context.Context, saga *domains.OrderS
 		zap.Int("saga_id", saga.ID),
 	)
 
+	go s.Continue(ctx)
+}
+
+func (s *OrderSagaService) ConfirmReservation(ctx context.Context, saga *domains.OrderSaga) {
+	place := "[OrderSagaService.ConfirmReservation]"
+
+	logger.Log.Info(fmt.Sprintf("%s Начало шага подтверждение бронирования товаров", place),
+		zap.String("request_id", saga.RequestID),
+		zap.Int("user_id", saga.UserID),
+		zap.Int("saga_id", saga.ID),
+	)
+
+	err := s.repo.ChangeStatus(ctx, saga, domains.StatusConfirmReservationStarted)
+	if err != nil {
+		logger.Log.Error(fmt.Sprintf("%s Ошибка изменения статуса саги", place),
+			zap.String("request_id", saga.RequestID),
+			zap.Int("user_id", saga.UserID),
+			zap.Int("saga_id", saga.ID),
+			zap.Error(err),
+		)
+		return
+	}
+
+	request := domains.ConfirmReserveRequest{
+		RequestID: saga.RequestID,
+		OrderID:   saga.OrderID,
+	}
+
+	err = s.inventoryClient.Confirm(&request)
+	if err != nil {
+		logger.Log.Error(fmt.Sprintf("%s Не удалось подтвердить резерв товаров", place),
+			zap.String("request_id", saga.RequestID),
+			zap.Int("user_id", saga.UserID),
+			zap.Int("saga_id", saga.ID),
+			zap.Error(err),
+		)
+		return
+	}
+
+	err = s.repo.ChangeStatus(ctx, saga, domains.StatusConfirmReservationFinished)
+	if err != nil {
+		logger.Log.Error(fmt.Sprintf("%s Ошибка изменения статуса саги", place),
+			zap.String("request_id", saga.RequestID),
+			zap.Int("user_id", saga.UserID),
+			zap.Int("saga_id", saga.ID),
+			zap.Error(err),
+		)
+		return
+	}
+
+	logger.Log.Info(fmt.Sprintf("%s Подтверждение бронирования товаров завершено", place),
+		zap.String("request_id", saga.RequestID),
+		zap.Int("user_id", saga.UserID),
+		zap.Int("saga_id", saga.ID),
+	)
+
+	ctx = context.WithValue(ctx, "saga", *saga)
 	go s.Continue(ctx)
 }

@@ -1,7 +1,10 @@
 .idea/*
 
+getway/app/.env
+
 authService/.idea/*
 authService/.env
+authService/.docker_env
 
 orderService/.idea/*
 orderService/.env
@@ -10,3 +13,7 @@ orderService/.docker_env
 inventoryService/.idea/*
 inventoryService/.env
 inventoryService/.docker_env
+
+sagaService/.idea
+sagaService/.docker_env
+sagaService/.env

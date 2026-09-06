@@ -180,13 +180,13 @@ func (s *InventoryService) CancelReservation(ctx context.Context, requestID stri
 	return nil
 }
 
-func (s *InventoryService) ConfirmReservation(ctx context.Context, requestID string) error {
+func (s *InventoryService) ConfirmReservation(ctx context.Context, requestID string, orderID int) error {
 	logger.Log.Info("Confirming reservation",
 		logger.WithTraceID(ctx),
 		zap.String("request_id", requestID),
 	)
 
-	if err := s.repo.ConfirmReservation(ctx, requestID); err != nil {
+	if err := s.repo.ConfirmReservation(ctx, requestID, orderID); err != nil {
 		logger.Log.Error("Failed to confirm reservation",
 			logger.WithTraceID(ctx),
 			zap.Error(err),

@@ -60,6 +60,31 @@ func (c *InventoryClient) Reserve(request *domains.ReserveRequest) (*domains.Res
 	return &result, nil
 }
 
-func (c *InventoryClient) Confirm() {}
+func (c *InventoryClient) Confirm(request *domains.ConfirmReserveRequest) error {
+	url := fmt.Sprintf("%s/api/v1/inventory/reserve/confirm", c.baseUrl)
+
+	body, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	response, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", response.StatusCode)
+	}
+
+	return nil
+}
 
 func (c *InventoryClient) Cancel() {}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -114,17 +115,77 @@ func (r *InventoryRepository) ReserveItems(ctx context.Context, requestID string
 }
 
 // ConfirmReservation — подтверждает резервацию (используется после оплаты)
-func (r *InventoryRepository) ConfirmReservation(ctx context.Context, requestID string) error {
-	// Обновляем статус резерваций и списываем товары
-	query := `
-        UPDATE reservations 
-        SET status = '%s', updated_at = NOW()
-        WHERE request_id = $1 AND status = '%s'
-    `
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(query, domain.ReservationStatusComplete, domain.ReservationStatusPending), requestID)
+func (r *InventoryRepository) ConfirmReservation(ctx context.Context, requestID string, orderID int) error {
+	// Используем корректный defer для отката
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("failed to confirm reservation: %w", err)
+		return err
 	}
+	txConfirmed := false
+	defer func() {
+		if !txConfirmed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	query := `
+		UPDATE reservations 
+		SET status = $1, order_id = $2, updated_at = NOW()
+		WHERE request_id = $3 AND status = $4
+		RETURNING item_id, quantity
+	`
+	rows, err := tx.QueryContext(ctx, query,
+		domain.ReservationStatusComplete,
+		orderID,
+		requestID,
+		domain.ReservationStatusPending,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type itemUpdate struct {
+		itemID   int
+		quantity int
+	}
+	var items []itemUpdate
+
+	for rows.Next() {
+		var item itemUpdate
+		if err := rows.Scan(&item.itemID, &item.quantity); err != nil {
+			return err
+		}
+		items = append(items, item)
+	}
+	rows.Close() // Явно закрываем перед следующими запросами
+
+	if len(items) == 0 {
+		return fmt.Errorf("no pending reservations found for request %s", requestID)
+	}
+
+	// Шаг 2: Обновляем inventory.
+	// Чтобы избежать дедлоков, сортируем товары по ID перед обновлением!
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].itemID < items[j].itemID
+	})
+
+	updateInventoryQuery := `
+		UPDATE inventory
+		SET quantity = quantity - $1, reserved = reserved - $2, updated_at = NOW()
+		WHERE id = $3
+	`
+	for _, item := range items {
+		_, err = tx.ExecContext(ctx, updateInventoryQuery, item.quantity, item.quantity, item.itemID)
+		if err != nil {
+			return fmt.Errorf("failed to update inventory for item %d: %w", item.itemID, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	txConfirmed = true
 	return nil
 }
 
@@ -193,7 +254,7 @@ func (r *InventoryRepository) GetReservationStatus(ctx context.Context, requestI
 func (r *InventoryRepository) GetReservedItems(ctx context.Context, requestID string) ([]*domain.ReservedItem, error) {
 	var items []*domain.ReservedItem
 
-	query := `SELECT i.id, i.quantity, i.price 
+	query := `SELECT i.id, r.quantity, i.price 
 			  FROM reservations r
 			  LEFT JOIN inventory i ON r.item_id = i.id
 			  WHERE r.request_id = $1`
