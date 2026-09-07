@@ -90,6 +90,33 @@ func (s *OrderSagaService) Continue(ctx context.Context) {
 	}
 }
 
+func (s *OrderSagaService) ContinueCancel(ctx context.Context) {
+	place := "[OrderSaga.ContinueCancel]"
+
+	saga, ok := ctx.Value("saga").(domains.OrderSaga)
+	if !ok {
+		return
+	}
+
+	switch saga.Status {
+	case domains.StatusReserveStarted, domains.StatusReservedFailed, domains.StatusReservedFinished, domains.StatusCreateOrderCancelled:
+		s.CancelReserve(ctx, &saga)
+	case domains.StatusCreateOrderStarted, domains.StatusCreateOrderFailed, domains.StatusCreateOrderFinished, domains.StatusConfirmReservationCancelled:
+		s.CancelCreateOrder(ctx, &saga)
+	case domains.StatusConfirmReservationStarted, domains.StatusConfirmReservationFailed:
+		s.CancelConfirmReservation(ctx, &saga)
+	case domains.StatusReservedCancelled:
+		err := s.repo.ChangeStatus(ctx, &saga, domains.StatusCancelled)
+		if err != nil {
+			logger.Log.Error(fmt.Sprintf("%s ошибка изменения статуса саги", place),
+				zap.String("request_id", saga.RequestID),
+				zap.Int("saga_id", saga.ID),
+				zap.Error(err),
+			)
+		}
+	}
+}
+
 func (s *OrderSagaService) Reserve(ctx context.Context, saga *domains.OrderSaga) {
 	place := "[OrderSagaService.Reserve]"
 
@@ -122,6 +149,17 @@ func (s *OrderSagaService) Reserve(ctx context.Context, saga *domains.OrderSaga)
 			zap.Int("saga_id", saga.ID),
 			zap.Error(err),
 		)
+
+		err = s.repo.CancelSaga(ctx, saga, domains.StatusReservedFailed)
+		if err != nil {
+			logger.Log.Error(fmt.Sprintf("%s ошибка отмены саги", place),
+				zap.String("request_id", saga.RequestID),
+				zap.Int("saga_id", saga.ID),
+				zap.Error(err),
+			)
+		}
+		ctx = context.WithValue(ctx, "saga", *saga)
+		go s.ContinueCancel(ctx)
 		return
 	}
 
@@ -157,6 +195,51 @@ func (s *OrderSagaService) Reserve(ctx context.Context, saga *domains.OrderSaga)
 	go s.Continue(ctx)
 }
 
+func (s *OrderSagaService) CancelReserve(ctx context.Context, saga *domains.OrderSaga) {
+	place := "[OrderSagaService.CancelReserve]"
+
+	request := &domains.CancelReserveRequest{
+		RequestID: saga.RequestID,
+	}
+
+	logger.Log.Info(fmt.Sprintf("%s Начало шага отмены резерва товаров", place),
+		zap.String("request_id", saga.RequestID),
+		zap.Int("user_id", saga.UserID),
+		zap.Int("saga_id", saga.ID),
+	)
+
+	err := s.inventoryClient.Cancel(request)
+	if err != nil {
+		logger.Log.Error(fmt.Sprintf("%s Ошибка отмены резерва товаров", place),
+			zap.String("request_id", saga.RequestID),
+			zap.Int("user_id", saga.UserID),
+			zap.Int("saga_id", saga.ID),
+			zap.Error(err),
+		)
+		return
+	}
+
+	err = s.repo.ChangeStatus(ctx, saga, domains.StatusReservedCancelled)
+	if err != nil {
+		logger.Log.Error(fmt.Sprintf("%s ошибка изменения статуса саги", place),
+			zap.String("request_id", saga.RequestID),
+			zap.Int("saga_id", saga.ID),
+			zap.Error(err),
+		)
+		return
+	}
+
+	ctx = context.WithValue(ctx, "saga", *saga)
+
+	logger.Log.Info(fmt.Sprintf("%s Конец шага отмены резерва товаров", place),
+		zap.String("request_id", saga.RequestID),
+		zap.Int("user_id", saga.UserID),
+		zap.Int("saga_id", saga.ID),
+	)
+
+	go s.ContinueCancel(ctx)
+}
+
 func (s *OrderSagaService) CreateOrder(ctx context.Context, saga *domains.OrderSaga) {
 	place := "[OrderSagaService.CreateOrder]"
 
@@ -190,6 +273,19 @@ func (s *OrderSagaService) CreateOrder(ctx context.Context, saga *domains.OrderS
 			zap.Int("saga_id", saga.ID),
 			zap.Error(err),
 		)
+
+		err = s.repo.CancelSaga(ctx, saga, domains.StatusCreateOrderFailed)
+		if err != nil {
+			logger.Log.Error(fmt.Sprintf("%s ошибка изменения статуса саги", place),
+				zap.String("request_id", saga.RequestID),
+				zap.Int("saga_id", saga.ID),
+				zap.Error(err),
+			)
+			return
+		}
+
+		ctx = context.WithValue(ctx, "saga", *saga)
+		go s.ContinueCancel(ctx)
 		return
 	}
 
@@ -224,6 +320,24 @@ func (s *OrderSagaService) CreateOrder(ctx context.Context, saga *domains.OrderS
 	)
 
 	go s.Continue(ctx)
+}
+
+func (s *OrderSagaService) CancelCreateOrder(ctx context.Context, saga *domains.OrderSaga) {
+	place := "[OrderSagaService.CancelCreateOrder]"
+	
+	err := s.repo.ChangeStatus(ctx, saga, domains.StatusCreateOrderCancelled)
+	if err != nil {
+		logger.Log.Error(fmt.Sprintf("%s Ошибка изменения статуса саги", place),
+			zap.String("request_id", saga.RequestID),
+			zap.Int("user_id", saga.UserID),
+			zap.Int("saga_id", saga.ID),
+			zap.Error(err),
+		)
+		return
+	}
+
+	ctx = context.WithValue(ctx, "saga", *saga)
+	go s.ContinueCancel(ctx)
 }
 
 func (s *OrderSagaService) ConfirmReservation(ctx context.Context, saga *domains.OrderSaga) {
@@ -282,3 +396,5 @@ func (s *OrderSagaService) ConfirmReservation(ctx context.Context, saga *domains
 	ctx = context.WithValue(ctx, "saga", *saga)
 	go s.Continue(ctx)
 }
+
+func (s *OrderSagaService) CancelConfirmReservation(ctx context.Context, saga *domains.OrderSaga) {}

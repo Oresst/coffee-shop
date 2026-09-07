@@ -164,8 +164,6 @@ func (r *InventoryRepository) ConfirmReservation(ctx context.Context, requestID 
 		return fmt.Errorf("no pending reservations found for request %s", requestID)
 	}
 
-	// Шаг 2: Обновляем inventory.
-	// Чтобы избежать дедлоков, сортируем товары по ID перед обновлением!
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].itemID < items[j].itemID
 	})
@@ -202,23 +200,45 @@ func (r *InventoryRepository) CancelReservation(ctx context.Context, requestID s
 	}()
 
 	// Получаем все pending резервации по request_id
-	selectQuery := `SELECT item_id, quantity FROM reservations WHERE request_id = $1 AND status = '%s'`
+	selectQuery := `SELECT item_id, quantity FROM reservations WHERE request_id = $1 AND status = '%s' FOR UPDATE`
 	rows, err := tx.QueryContext(ctx, fmt.Sprintf(selectQuery, domain.ReservationStatusPending), requestID)
 	if err != nil {
 		return fmt.Errorf("failed to get reservations: %w", err)
 	}
 	defer rows.Close()
 
-	// Уменьшаем reserved для каждого товара
+	type itemUpdate struct {
+		itemID   int
+		quantity int
+	}
+	var items []itemUpdate
+
 	for rows.Next() {
-		var itemID, quantity int64
-		if err := rows.Scan(&itemID, &quantity); err != nil {
+		var item itemUpdate
+		if err := rows.Scan(&item.itemID, &item.quantity); err != nil {
 			return err
 		}
-		updateQuery := `UPDATE inventory SET reserved = reserved - $1, updated_at = NOW() WHERE id = $2`
-		_, err = tx.ExecContext(ctx, updateQuery, quantity, itemID)
+		items = append(items, item)
+	}
+	rows.Close() // Явно закрываем перед следующими запросами
+
+	if len(items) == 0 {
+		return fmt.Errorf("no pending reservations found for request %s", requestID)
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].itemID < items[j].itemID
+	})
+
+	updateInventoryQuery := `
+		UPDATE inventory
+		SET reserved = reserved - $1, updated_at = NOW()
+		WHERE id = $2
+	`
+	for _, item := range items {
+		_, err = tx.ExecContext(ctx, updateInventoryQuery, item.quantity, item.itemID)
 		if err != nil {
-			return fmt.Errorf("failed to update inventory: %w", err)
+			return fmt.Errorf("failed to update inventory for item %d: %w", item.itemID, err)
 		}
 	}
 

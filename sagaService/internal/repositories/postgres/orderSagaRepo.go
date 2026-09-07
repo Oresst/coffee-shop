@@ -15,6 +15,7 @@ type CreateOrderSagaRepoInt interface {
 	ChangeStatus(ctx context.Context, saga *domains.OrderSaga, status domains.OrderSagaStatus) error
 	ChangeItems(ctx context.Context, sagaId int, items []*domains.Item) error
 	ChangeOrderId(ctx context.Context, sagaId int, orderId int) error
+	CancelSaga(ctx context.Context, saga *domains.OrderSaga, status domains.OrderSagaStatus) error
 	GetNotCompleted(ctx context.Context) ([]*domains.OrderSaga, error)
 	GetStatus(ctx context.Context, sagaId int) (*domains.OrderSagaStatus, error)
 	Close()
@@ -71,6 +72,20 @@ func (r *CreateOrderSagaPostRepo) ChangeStatus(ctx context.Context, saga *domain
 	}
 
 	saga.Status = status
+
+	return nil
+}
+
+func (r *CreateOrderSagaPostRepo) CancelSaga(ctx context.Context, saga *domains.OrderSaga, status domains.OrderSagaStatus) error {
+	query := "UPDATE order_sagas SET status = $1, cancelled = true WHERE id = $2"
+
+	_, err := r.db.Exec(query, status, saga.ID)
+	if err != nil {
+		return err
+	}
+
+	saga.Status = status
+	saga.Cancelled = true
 
 	return nil
 }
