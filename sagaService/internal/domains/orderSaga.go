@@ -71,6 +71,10 @@ type ReserveRequest struct {
 	Items     []*Item `json:"items"`
 }
 
+type CancelReserveRequest struct {
+	RequestID string `json:"request_id"`
+}
+
 type ReserveResponse struct {
 	Success   bool    `json:"success"`
 	RequestID string  `json:"request_id"`
