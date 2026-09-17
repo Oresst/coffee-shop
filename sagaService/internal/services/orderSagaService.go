@@ -54,9 +54,9 @@ func (s *OrderSagaService) StartSaga(ctx context.Context, userID int, items []*d
 		zap.Int("saga_id", saga.ID),
 	)
 
-	ctx = context.WithValue(ctx, "saga", saga)
+	bgCtx := context.WithValue(context.WithoutCancel(ctx), "saga", saga)
 
-	go s.Continue(ctx)
+	go s.Continue(bgCtx)
 
 	return &domains.CreateOrderSagaResponse{
 		RequestID: requestID,

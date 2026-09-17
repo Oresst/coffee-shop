@@ -55,7 +55,7 @@ func (r *CreateOrderSagaPostRepo) CreateSaga(ctx context.Context, saga *domains.
     	(request_id, user_id, status, items, cancelled, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING id`
 
-	err = r.db.QueryRow(query, saga.RequestID, saga.UserID, saga.Status.String(), items, saga.Cancelled).Scan(&saga.ID)
+	err = r.db.QueryRowContext(ctx, query, saga.RequestID, saga.UserID, saga.Status.String(), items, saga.Cancelled).Scan(&saga.ID)
 	if err != nil {
 		return fmt.Errorf("failed to insert into order_saga: %w", err)
 	}
@@ -66,7 +66,7 @@ func (r *CreateOrderSagaPostRepo) CreateSaga(ctx context.Context, saga *domains.
 func (r *CreateOrderSagaPostRepo) ChangeStatus(ctx context.Context, saga *domains.OrderSaga, status domains.OrderSagaStatus) error {
 	query := "UPDATE order_sagas SET status = $1 WHERE id = $2"
 
-	_, err := r.db.Exec(query, status, saga.ID)
+	_, err := r.db.ExecContext(ctx, query, status, saga.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update order_saga: %w", err)
 	}
@@ -79,7 +79,7 @@ func (r *CreateOrderSagaPostRepo) ChangeStatus(ctx context.Context, saga *domain
 func (r *CreateOrderSagaPostRepo) CancelSaga(ctx context.Context, saga *domains.OrderSaga, status domains.OrderSagaStatus) error {
 	query := "UPDATE order_sagas SET status = $1, cancelled = true WHERE id = $2"
 
-	_, err := r.db.Exec(query, status, saga.ID)
+	_, err := r.db.ExecContext(ctx, query, status, saga.ID)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (r *CreateOrderSagaPostRepo) GetNotCompleted(ctx context.Context) ([]*domai
 
 	query := "SELECT id, request_id, user_id, status, cancelled, created_at, updated_at FROM order_sagas WHERE status not in ($1, $2)"
 
-	rows, err := r.db.Query(query, domains.StatusCreated.String(), domains.StatusCancelled.String())
+	rows, err := r.db.QueryContext(ctx, query, domains.StatusCreated.String(), domains.StatusCancelled.String())
 	if err != nil {
 		return orderSagas, fmt.Errorf("failed to query order_saga: %w", err)
 	}
@@ -128,7 +128,7 @@ func (r *CreateOrderSagaPostRepo) GetStatus(ctx context.Context, sagaId int) (*d
 	var result resultStruct
 
 	query := "SELECT status FROM order_sagas WHERE id = $1"
-	err := r.db.QueryRow(query, sagaId).Scan(&result.Status)
+	err := r.db.QueryRowContext(ctx, query, sagaId).Scan(&result.Status)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query order_saga: %w", err)
 	}
@@ -144,7 +144,7 @@ func (r *CreateOrderSagaPostRepo) ChangeItems(ctx context.Context, sagaId int, i
 
 	query := `UPDATE order_sagas SET items = $1 WHERE id = $2`
 
-	_, err = r.db.Exec(query, string(preparedItems), sagaId)
+	_, err = r.db.ExecContext(ctx, query, string(preparedItems), sagaId)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (r *CreateOrderSagaPostRepo) ChangeItems(ctx context.Context, sagaId int, i
 func (r *CreateOrderSagaPostRepo) ChangeOrderId(ctx context.Context, sagaId int, orderId int) error {
 	query := "UPDATE order_sagas SET order_id = $1 WHERE id = $2"
 
-	_, err := r.db.Exec(query, orderId, sagaId)
+	_, err := r.db.ExecContext(ctx, query, orderId, sagaId)
 	if err != nil {
 		return err
 	}
