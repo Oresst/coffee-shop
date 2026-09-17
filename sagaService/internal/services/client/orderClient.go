@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/yourusername/saga-service/internal/config"
@@ -26,7 +27,7 @@ func NewOrderClient(cfg *config.Config) *OrderClient {
 	}
 }
 
-func (c *OrderClient) CreateOrder(request *domains.CreateOrderRequest) (*domains.CreateOrderResponse, error) {
+func (c *OrderClient) CreateOrder(ctx context.Context, request *domains.CreateOrderRequest) (*domains.CreateOrderResponse, error) {
 	url := fmt.Sprintf("%s/api/create_order", c.baseUrl)
 
 	body, err := json.Marshal(request)
@@ -34,14 +35,14 @@ func (c *OrderClient) CreateOrder(request *domains.CreateOrderRequest) (*domains
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	response, err := c.client.Do(req)
+	response, err := doWithRetry(ctx, c.client, func() (*http.Request, error) {
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		return req, nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +53,7 @@ func (c *OrderClient) CreateOrder(request *domains.CreateOrderRequest) (*domains
 	}
 
 	var result domains.CreateOrderResponse
-	err = json.NewDecoder(response.Body).Decode(&result)
-	if err != nil {
+	if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
 		return nil, err
 	}
 

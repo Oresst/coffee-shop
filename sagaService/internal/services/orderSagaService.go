@@ -142,7 +142,7 @@ func (s *OrderSagaService) Reserve(ctx context.Context, saga *domains.OrderSaga)
 		return
 	}
 
-	result, err := s.inventoryClient.Reserve(request)
+	result, err := s.inventoryClient.Reserve(ctx, request)
 	if err != nil {
 		logger.Log.Error(fmt.Sprintf("%s ошибка резервации товаров", place),
 			zap.String("request_id", saga.RequestID),
@@ -208,7 +208,7 @@ func (s *OrderSagaService) CancelReserve(ctx context.Context, saga *domains.Orde
 		zap.Int("saga_id", saga.ID),
 	)
 
-	err := s.inventoryClient.Cancel(request)
+	err := s.inventoryClient.Cancel(ctx, request)
 	if err != nil {
 		logger.Log.Error(fmt.Sprintf("%s Ошибка отмены резерва товаров", place),
 			zap.String("request_id", saga.RequestID),
@@ -265,7 +265,7 @@ func (s *OrderSagaService) CreateOrder(ctx context.Context, saga *domains.OrderS
 		return
 	}
 
-	result, err := s.orderClient.CreateOrder(&request)
+	result, err := s.orderClient.CreateOrder(ctx, &request)
 	if err != nil {
 		logger.Log.Error(fmt.Sprintf("%s Ошибка вызова сервиса создания заказа", place),
 			zap.String("request_id", saga.RequestID),
@@ -365,7 +365,7 @@ func (s *OrderSagaService) ConfirmReservation(ctx context.Context, saga *domains
 		OrderID:   saga.OrderID,
 	}
 
-	err = s.inventoryClient.Confirm(&request)
+	err = s.inventoryClient.Confirm(ctx, &request)
 	if err != nil {
 		logger.Log.Error(fmt.Sprintf("%s Не удалось подтвердить резерв товаров", place),
 			zap.String("request_id", saga.RequestID),
