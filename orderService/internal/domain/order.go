@@ -53,3 +53,9 @@ type OrderResponse struct {
 	UserID int64       `json:"user_id"`
 	Status OrderStatus `json:"status"`
 }
+
+type CancelOrderRequest struct {
+	UserID    int64  `json:"user_id"`
+	RequestID string `json:"request_id"`
+	OrderID   int64  `json:"order_id"`
+}

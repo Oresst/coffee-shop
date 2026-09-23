@@ -60,4 +60,33 @@ func (c *OrderClient) CreateOrder(ctx context.Context, request *domains.CreateOr
 	return &result, nil
 }
 
-func (c *OrderClient) CancelOrder() {}
+func (c *OrderClient) CancelOrder(ctx context.Context, request *domains.CancelOrderSagaRequest) error {
+	url := fmt.Sprintf("%s/api/cancel_order", c.baseUrl)
+
+	body, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+
+	response, err := doWithRetry(ctx, c.client, func() (*http.Request, error) {
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		return req, nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", response.StatusCode)
+	}
+
+	return nil
+}

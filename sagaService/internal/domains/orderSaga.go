@@ -107,3 +107,9 @@ type CreateOrderResponse struct {
 type CreateOrderSagaResponse struct {
 	RequestID string `json:"request_id"`
 }
+
+type CancelOrderSagaRequest struct {
+	RequestID string `json:"request_id"`
+	OrderID   int    `json:"order_id"`
+	UserID    int    `json:"user_id"`
+}

@@ -133,6 +133,13 @@ func (r *OrderRepository) UpdateStatus(ctx context.Context, id int64, status str
 	return err
 }
 
+func (r *OrderRepository) CancelOrder(ctx context.Context, orderId int64, userId int64, requestId string) error {
+	query := `UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 and user_id = $3 and request_id = $4`
+
+	_, err := r.Db.ExecContext(ctx, query, domain.StatusCancelled, orderId, userId, requestId)
+	return err
+}
+
 func (r *OrderRepository) Close() error {
 	return r.Db.Close()
 }

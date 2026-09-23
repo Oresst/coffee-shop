@@ -87,7 +87,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, req *domain.CreateOrderR
 }
 
 func (s *OrderService) GetOrder(ctx context.Context, id int64) (*domain.OrderResponse, error) {
-	logger.Log.Debug("Getting order",
+	logger.Log.Info("Getting order",
 		logger.WithTraceID(ctx),
 		zap.Int64("order_id", id),
 	)
@@ -108,7 +108,7 @@ func (s *OrderService) GetOrder(ctx context.Context, id int64) (*domain.OrderRes
 }
 
 func (s *OrderService) GetUserOrders(ctx context.Context, userID int64) ([]domain.OrderResponse, error) {
-	logger.Log.Debug("Getting user orders",
+	logger.Log.Info("Getting user orders",
 		logger.WithTraceID(ctx),
 		zap.Int64("user_id", userID),
 	)
@@ -128,4 +128,27 @@ func (s *OrderService) GetUserOrders(ctx context.Context, userID int64) ([]domai
 	}
 
 	return responses, nil
+}
+
+func (s *OrderService) CancelOrder(ctx context.Context, id int64, userId int64, requestId string) error {
+	logger.Log.Info("Canceling order",
+		logger.WithTraceID(ctx),
+		zap.Int64("order_id", id),
+		zap.Int64("user_id", userId),
+		zap.String("request_id", requestId),
+	)
+
+	err := s.repo.CancelOrder(ctx, id, userId, requestId)
+	if err != nil {
+		return err
+	}
+
+	logger.Log.Info("Order has been cancelled",
+		logger.WithTraceID(ctx),
+		zap.Int64("order_id", id),
+		zap.Int64("user_id", userId),
+		zap.String("request_id", requestId),
+	)
+
+	return nil
 }

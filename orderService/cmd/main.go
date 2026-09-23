@@ -90,6 +90,7 @@ func main() {
 	order := router.Group("/api")
 	{
 		order.POST("/create_order", orderhandler.CreateOrder)
+		order.POST("/cancel_order", orderhandler.CancelOrder)
 	}
 
 	// Health check

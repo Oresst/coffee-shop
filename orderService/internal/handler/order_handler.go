@@ -104,3 +104,29 @@ func (h *OrderHandler) GetUserOrders(c *gin.Context) {
 
 	c.JSON(http.StatusOK, orders)
 }
+
+func (h *OrderHandler) CancelOrder(c *gin.Context) {
+	place := "[OrderHandler.CancelOrder]"
+
+	var cancelOrderRequest domain.CancelOrderRequest
+	if err := c.ShouldBindJSON(&cancelOrderRequest); err != nil {
+		logger.Log.Warn(fmt.Sprintf("%s Ошибка в методе ShouldBindJSON", place),
+			zap.Error(err),
+		)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx := c.Request.Context()
+	err := h.orderService.CancelOrder(ctx, cancelOrderRequest.OrderID, cancelOrderRequest.UserID, cancelOrderRequest.RequestID)
+	if err != nil {
+		logger.Log.Error("Failed to cancel order",
+			logger.WithTraceID(ctx),
+			zap.Error(err),
+			zap.Int64("order_id", cancelOrderRequest.OrderID),
+			zap.Int64("user_id", cancelOrderRequest.UserID),
+		)
+	}
+
+	c.JSON(http.StatusOK, gin.H{})
+}

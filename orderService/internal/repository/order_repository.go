@@ -16,6 +16,7 @@ type OrderRepositoryInt interface {
 	FindByRequestID(ctx context.Context, requestId string) (*domain.Order, error)
 	FindByUserID(ctx context.Context, userID int64) ([]domain.Order, error)
 	UpdateStatus(ctx context.Context, id int64, status string) error
+	CancelOrder(ctx context.Context, orderId int64, userId int64, requestId string) error
 	Close() error
 }
 
