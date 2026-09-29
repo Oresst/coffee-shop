@@ -442,7 +442,24 @@ func (s *OrderSagaService) CancelConfirmReservation(ctx context.Context, saga *d
 		zap.Int("saga_id", saga.ID),
 	)
 
-	err := s.repo.ChangeStatus(ctx, saga, domains.StatusConfirmReservationCancelled)
+	request := domains.CancelConfirmReservationRequest{
+		RequestID: saga.RequestID,
+		OrderID:   saga.OrderID,
+		UserID:    saga.UserID,
+	}
+
+	err := s.inventoryClient.CancelConfirmReservation(ctx, &request)
+	if err != nil {
+		logger.Log.Error(fmt.Sprintf("%s Ошибка отмены резервации", place),
+			zap.String("request_id", saga.RequestID),
+			zap.Int("user_id", saga.UserID),
+			zap.Int("saga_id", saga.ID),
+		)
+
+		return
+	}
+
+	err = s.repo.ChangeStatus(ctx, saga, domains.StatusConfirmReservationCancelled)
 	if err != nil {
 		logger.Log.Error(fmt.Sprintf("%s Ошибка изменения статуса саги", place),
 			zap.String("request_id", saga.RequestID),

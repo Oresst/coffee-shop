@@ -115,3 +115,33 @@ func (c *InventoryClient) Cancel(ctx context.Context, request *domains.CancelRes
 
 	return nil
 }
+
+func (c *InventoryClient) CancelConfirmReservation(ctx context.Context, request *domains.CancelConfirmReservationRequest) error {
+	url := fmt.Sprintf("%s/api/v1/inventory/reserve/cancel_confirmed", c.baseUrl)
+
+	body, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+
+	response, err := doWithRetry(ctx, c.client, func() (*http.Request, error) {
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		return req, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", response.StatusCode)
+	}
+
+	return nil
+}

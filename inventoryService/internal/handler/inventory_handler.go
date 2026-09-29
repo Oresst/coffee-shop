@@ -104,27 +104,50 @@ func (h *InventoryHandler) CancelReservation(c *gin.Context) {
 }
 
 func (h *InventoryHandler) ConfirmReservation(c *gin.Context) {
-	//var req struct {
-	//	RequestID string `json:"request_id" binding:"required"`
-	//	OrderID   int    `json:"order_id" binding:"required"`
-	//}
+	var req struct {
+		RequestID string `json:"request_id" binding:"required"`
+		OrderID   int    `json:"order_id" binding:"required"`
+	}
 
-	c.JSON(http.StatusInternalServerError, gin.H{})
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-	//if err := c.ShouldBindJSON(&req); err != nil {
-	//	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	//	return
-	//}
-	//
-	//ctx := c.Request.Context()
-	//if err := h.inventoryService.ConfirmReservation(ctx, req.RequestID, req.OrderID); err != nil {
-	//	logger.Log.Error("Confirm reservation failed",
-	//		logger.WithTraceID(ctx),
-	//		zap.Error(err),
-	//	)
-	//	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	//	return
-	//}
-	//
-	//c.JSON(http.StatusOK, gin.H{"status": "confirmed"})
+	ctx := c.Request.Context()
+	if err := h.inventoryService.ConfirmReservation(ctx, req.RequestID, req.OrderID); err != nil {
+		logger.Log.Error("Confirm reservation failed",
+			logger.WithTraceID(ctx),
+			zap.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "confirmed"})
+}
+
+func (h *InventoryHandler) CancelConfirmReservation(c *gin.Context) {
+	var req struct {
+		RequestID string `json:"request_id" binding:"required"`
+		OrderID   int    `json:"order_id" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx := c.Request.Context()
+	if err := h.inventoryService.CancelConfirmReservation(ctx, req.RequestID); err != nil {
+		logger.Log.Error("Cancel confirm reservation failed",
+			logger.WithTraceID(ctx),
+			zap.Error(err),
+		)
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "cancelled"})
 }

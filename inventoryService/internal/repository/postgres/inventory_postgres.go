@@ -257,6 +257,78 @@ func (r *InventoryRepository) CancelReservation(ctx context.Context, requestID s
 	return nil
 }
 
+func (r *InventoryRepository) CancelConfirmedReservation(ctx context.Context, requestID string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	selectQuery := `SELECT item_id, quantity FROM reservations WHERE request_id = $1 AND status = '%s' FOR UPDATE`
+	rows, err := tx.QueryContext(ctx, fmt.Sprintf(selectQuery, domain.ReservationStatusComplete), requestID)
+	if err != nil {
+		return fmt.Errorf("failed to get reservations: %w", err)
+	}
+
+	defer rows.Close()
+
+	type itemUpdate struct {
+		itemID   int
+		quantity int
+	}
+	var items []itemUpdate
+
+	for rows.Next() {
+		var item itemUpdate
+		if err := rows.Scan(&item.itemID, &item.quantity); err != nil {
+			return err
+		}
+
+		items = append(items, item)
+	}
+
+	rows.Close()
+
+	if len(items) == 0 {
+		_ = tx.Rollback()
+		return nil
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].itemID < items[j].itemID
+	})
+
+	updateInventoryQuery := `
+		UPDATE inventory
+		SET quantity = quantity + $1, updated_at = NOW()
+		WHERE id = $2
+	`
+
+	for _, item := range items {
+		_, err = tx.ExecContext(ctx, updateInventoryQuery, item.quantity, item.itemID)
+		if err != nil {
+			return fmt.Errorf("failed to update inventory for item %d: %w", item.itemID, err)
+		}
+	}
+
+	// Обновляем статус резерваций на cancelled
+	cancelQuery := `UPDATE reservations SET status = '%s', updated_at = NOW() WHERE request_id = $1 AND status = '%s'`
+	_, err = tx.ExecContext(ctx, fmt.Sprintf(cancelQuery, domain.ReservationStatusCancelled, domain.ReservationStatusComplete), requestID)
+	if err != nil {
+		return fmt.Errorf("failed to cancel reservations: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return nil
+}
+
 // GetReservationStatus — получает статус резервации по request_id
 func (r *InventoryRepository) GetReservationStatus(ctx context.Context, requestID string) (string, error) {
 	var status string

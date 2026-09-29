@@ -113,3 +113,9 @@ type CancelOrderSagaRequest struct {
 	OrderID   int    `json:"order_id"`
 	UserID    int    `json:"user_id"`
 }
+
+type CancelConfirmReservationRequest struct {
+	RequestID string `json:"request_id"`
+	OrderID   int    `json:"order_id"`
+	UserID    int    `json:"user_id"`
+}

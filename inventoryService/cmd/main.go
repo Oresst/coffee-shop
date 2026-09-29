@@ -82,6 +82,7 @@ func main() {
 		api.POST("/reserve", inventoryHandler.ReserveItems)
 		api.POST("/reserve/cancel", inventoryHandler.CancelReservation)
 		api.POST("/reserve/confirm", inventoryHandler.ConfirmReservation)
+		api.POST("/reserve/cancel_confirmed", inventoryHandler.CancelConfirmReservation)
 	}
 
 	router.GET("/health", func(c *gin.Context) {
