@@ -161,7 +161,20 @@ func (r *InventoryRepository) ConfirmReservation(ctx context.Context, requestID 
 	rows.Close() // Явно закрываем перед следующими запросами
 
 	if len(items) == 0 {
-		return fmt.Errorf("no pending reservations found for request %s", requestID)
+		var status string
+		statusErr := tx.QueryRowContext(ctx, `SELECT status FROM reservations WHERE request_id = $1 LIMIT 1`, requestID).Scan(&status)
+		if statusErr == sql.ErrNoRows {
+			return fmt.Errorf("reservation %s not found", requestID)
+		}
+		if statusErr != nil {
+			return statusErr
+		}
+		if status != string(domain.ReservationStatusComplete) {
+			return fmt.Errorf("reservation %s has unexpected status %q, expected %q or %q",
+				requestID, status, domain.ReservationStatusComplete, domain.ReservationStatusPending)
+		}
+		// Уже подтверждена ранее (идемпотентный повторный вызов)
+		return nil
 	}
 
 	sort.Slice(items, func(i, j int) bool {
